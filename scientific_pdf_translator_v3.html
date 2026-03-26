@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مترجم المحاضرات العلمية</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* ── tokens ── */
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#1c2128;--s3:#21262d;
+  --b1:#30363d;--b2:#444c56;
+  --t1:#e6edf3;--t2:#8b949e;--t3:#484f58;
+  --blue:#4493f8;--purple:#a371f7;--green:#3fb950;
+  --gold:#d29922;--red:#f85149;
+  --glow-b:rgba(68,147,248,.15);--glow-g:rgba(63,185,80,.15);
+}
+[data-theme=light]{
+  --bg:#f6f8fa;--s1:#fff;--s2:#f6f8fa;--s3:#eaeef2;
+  --b1:#d0d7de;--b2:#afb8c1;
+  --t1:#1f2328;--t2:#636c76;--t3:#9198a1;
+  --glow-b:rgba(68,147,248,.1);--glow-g:rgba(63,185,80,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:'Cairo',sans-serif;display:flex;flex-direction:column;transition:background .25s,color .25s}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:4px}
+button{cursor:pointer;font-family:'Cairo',sans-serif;transition:.15s}
+
+/* ── topbar ── */
+.topbar{
+  height:52px;min-height:52px;background:var(--s1);
+  border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;padding:0 18px;gap:12px;
+  position:relative;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:8px;font-weight:900;font-size:.95rem}
+.logo-icon{font-size:1.3rem}
+.logo-text{background:linear-gradient(90deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-ver{font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:var(--t3);letter-spacing:1px;display:block;-webkit-text-fill-color:var(--t3)}
+.gap{flex:1}
+.topbtn{
+  padding:6px 13px;border-radius:7px;border:1px solid var(--b1);
+  background:var(--s2);color:var(--t2);font-size:.8rem;font-weight:700;
+}
+.topbtn:hover{border-color:var(--blue);color:var(--blue)}
+.lang-sw{display:flex;background:var(--s2);border-radius:7px;overflow:hidden;border:1px solid var(--b1)}
+.lang-sw button{padding:5px 12px;font-size:.8rem;color:var(--t2);border:none;background:none;font-weight:700}
+.lang-sw button.on{background:var(--blue);color:#fff}
+
+/* ── app layout ── */
+.app{display:flex;flex:1;overflow:hidden}
+
+/* ── sidebar ── */
+.sidebar{
+  width:268px;min-width:248px;background:var(--s1);
+  border-left:1px solid var(--b1);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .22s,min-width .22s;
+}
+.sidebar.off{width:0;min-width:0}
+.sbscroll{flex:1;overflow-y:auto;padding:12px}
+.sblabel{
+  font-family:'IBM Plex Mono',monospace;font-size:.6rem;
+  color:var(--t3);letter-spacing:1.8px;text-transform:uppercase;
+  margin-bottom:7px;margin-top:4px;
+}
+.sbsec{margin-bottom:16px}
+
+/* drop zone */
+.dz{
+  border:2px dashed var(--b2);border-radius:9px;
+  padding:16px 10px;text-align:center;cursor:pointer;
+  background:var(--s2);position:relative;overflow:hidden;transition:.2s;
+}
+.dz::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 110%,var(--glow-b),transparent 60%);
+  opacity:0;transition:.25s;
+}
+.dz:hover::after,.dz.drag::after{opacity:1}
+.dz:hover,.dz.drag{border-color:var(--blue)}
+.dz-ico{font-size:1.9rem;margin-bottom:4px}
+.dz p{font-size:.78rem;color:var(--t2);line-height:1.5}
+.dz strong{color:var(--blue)}
+#finput{display:none}
+
+.fcard{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 11px;border-radius:8px;
+  background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.2);
+  margin-top:7px;
+}
+.fcard-ico{font-size:1.2rem}
+.fcard-name{font-size:.8rem;font-weight:700;color:var(--green);word-break:break-all;line-height:1.3}
+.fcard-meta{font-size:.68rem;color:var(--t3);margin-top:1px}
+
+/* page range */
+.pgrow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.pgrow label{font-size:.77rem;color:var(--t2)}
+.pgrow input{
+  width:55px;padding:4px 7px;border-radius:6px;
+  border:1px solid var(--b2);background:var(--s2);
+  color:var(--t1);font-size:.82rem;text-align:center;
+  font-family:'Cairo',sans-serif;
+}
+.pgrow input:focus{outline:none;border-color:var(--blue)}
+.pg-total{font-size:.7rem;color:var(--t3)}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{
+  padding:3px 10px;border-radius:20px;
+  border:1.5px solid var(--b2);background:var(--s2);
+  color:var(--t2);font-size:.75rem;font-weight:700;
+}
+.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip:hover:not(.on){border-color:var(--blue);color:var(--blue)}
+
+/* toggles */
+.togrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.83rem;color:var(--t2)}
+.tog{position:relative;width:34px;height:19px}
+.tog input{display:none}
+.togsl{position:absolute;inset:0;background:var(--b1);border-radius:10px;cursor:pointer;transition:.2s}
+.tog input:checked+.togsl{background:var(--blue)}
+.togsl::before{content:'';position:absolute;width:13px;height:13px;background:#fff;border-radius:50%;top:3px;right:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog input:checked+.togsl::before{transform:translateX(-15px)}
+
+/* go button */
+.gobtn{
+  width:100%;padding:11px;border-radius:9px;border:none;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;font-size:.9rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 3px 12px rgba(68,147,248,.28);
+}
+.gobtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 18px rgba(68,147,248,.42)}
+.gobtn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* history mini */
+.hmini{display:flex;flex-direction:column;gap:5px}
+.hitem{
+  padding:8px 10px;border-radius:7px;
+  background:var(--s2);border:1px solid var(--b1);cursor:pointer;transition:.15s;
+}
+.hitem:hover{border-color:var(--blue)}
+.hitem-title{font-size:.79rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem-meta{font-size:.66rem;color:var(--t3);margin-top:2px;display:flex;gap:7px}
+.hbadge{font-size:.62rem;padding:1px 6px;border-radius:8px;background:var(--s3);color:var(--t3)}
+.hbadge.en-ar{background:rgba(68,147,248,.12);color:var(--blue)}
+.hbadge.ar-en{background:rgba(163,113,247,.12);color:var(--purple)}
+.hempty{font-size:.79rem;color:var(--t3);text-align:center;padding:10px;font-style:italic}
+
+.sbbot{padding:10px 12px;border-top:1px solid var(--b1)}
+.sbstat{margin-top:7px;min-height:16px;font-size:.75rem;color:var(--t3);text-align:center}
+
+/* ── main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* progress */
+.pbar{height:2px;background:var(--b1);overflow:hidden;position:relative}
+.pfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple),var(--green));background-size:200%;width:0;transition:width .35s}
+.pfill.slide{width:42%;animation:slide 1s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(180%)}100%{transform:translateX(-220%)}}
+
+/* steps indicator */
+.steps-bar{
+  display:flex;align-items:center;justify-content:center;
+  gap:0;padding:10px 20px;
+  background:var(--s1);border-bottom:1px solid var(--b1);
+  overflow-x:auto;
+}
+.step-item{display:flex;align-items:center;gap:0}
+.step-dot{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  font-size:.77rem;font-weight:700;color:var(--t3);
+  white-space:nowrap;transition:.3s;
+}
+.step-dot.done{color:var(--green)}
+.step-dot.active{color:var(--blue);background:rgba(68,147,248,.1)}
+.step-dot .sdico{font-size:.9rem}
+.step-line{width:28px;height:1px;background:var(--b1);flex-shrink:0;transition:.3s}
+.step-line.done{background:var(--green)}
+
+/* tabs */
+.tabs{
+  display:flex;background:var(--s1);border-bottom:1px solid var(--b1);
+  padding:0 14px;gap:2px;overflow-x:auto;
+}
+.tab{
+  padding:11px 15px;border:none;background:none;
+  color:var(--t2);font-size:.84rem;font-weight:700;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  white-space:nowrap;display:flex;align-items:center;gap:5px;
+}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+.tab:hover:not(.on){color:var(--t1)}
+.tbadge{background:var(--blue);color:#fff;border-radius:9px;padding:1px 7px;font-size:.62rem;font-weight:700}
+
+/* pane */
+.pane{flex:1;overflow-y:auto;padding:18px}
+
+/* welcome */
+.welcome{max-width:520px;margin:44px auto;text-align:center;animation:fu .45s ease}
+@keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.wico{font-size:3.5rem;margin-bottom:10px;filter:drop-shadow(0 0 18px var(--glow-b))}
+.welcome h2{font-size:1.45rem;font-weight:900;margin-bottom:7px}
+.welcome p{color:var(--t2);line-height:1.75;font-size:.92rem}
+.wsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+.wstep{padding:14px 10px;background:var(--s1);border-radius:10px;border:1px solid var(--b1);text-align:center}
+.wstep-n{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;font-size:.78rem;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 7px}
+.wstep p{font-size:.77rem;color:var(--t2);line-height:1.5}
+
+/* compare grid */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;animation:fu .4s ease}
+.rcard{background:var(--s1);border:1px solid var(--b1);border-radius:10px;overflow:hidden}
+.rc-head{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--b1)}
+.rc-head.orig{background:rgba(68,147,248,.06)}
+.rc-head.trans{background:rgba(63,185,80,.06)}
+.rc-title{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:1px;color:var(--t2)}
+.rc-body{padding:14px;font-size:.92rem;line-height:2;white-space:pre-wrap;min-height:160px}
+.rc-body.streaming::after{content:'▋';animation:blink .7s infinite;color:var(--blue)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* quality badge */
+.qbadge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 9px;border-radius:8px;font-size:.68rem;font-weight:700;
+  background:rgba(63,185,80,.12);color:var(--green);
+  border:1px solid rgba(63,185,80,.2);margin-right:8px;
+}
+
+/* terms */
+.tgrid{display:grid;gap:9px;animation:fu .4s ease}
+.tcard{background:var(--s1);border:1px solid var(--b1);border-radius:9px;overflow:hidden;transition:.15s}
+.tcard:hover{border-color:var(--blue)}
+.tc-head{padding:9px 13px;display:flex;justify-content:space-between;align-items:center;background:rgba(68,147,248,.06);border-bottom:1px solid var(--b1);flex-wrap:wrap;gap:5px}
+.tc-en{font-family:'IBM Plex Mono',monospace;font-size:.8rem;font-weight:700;color:var(--blue)}
+.tc-ar{font-size:.85rem;font-weight:700;color:var(--purple)}
+.tc-body{padding:9px 13px;font-size:.84rem;color:var(--t2);line-height:1.6}
+
+/* summary */
+.swrap{animation:fu .4s ease}
+.sum-hd{padding:12px 16px;background:rgba(163,113,247,.08);border:1px solid var(--b1);border-radius:10px 10px 0 0;border-bottom:none;font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:1.3px;color:var(--purple)}
+.sum-bd{background:var(--s1);border:1px solid var(--b1);border-radius:0 0 10px 10px;padding:14px}
+.spoint{display:flex;gap:10px;margin-bottom:9px;padding:11px;background:var(--s2);border-radius:7px;border-right:3px solid var(--blue);animation:fu .4s ease both}
+.spoint:nth-child(2){animation-delay:.05s}.spoint:nth-child(3){animation-delay:.1s}
+.spoint:nth-child(4){animation-delay:.15s}.spoint:nth-child(5){animation-delay:.2s}
+.sp-n{color:var(--blue);font-weight:900;font-size:1rem;min-width:20px}
+
+/* print */
+.pwrap{animation:fu .4s ease}
+.pbtn{padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;margin-bottom:12px}
+.pbtn:hover{background:#3b7de8}
+.pdoc{background:#fff;color:#111;max-width:720px;margin:0 auto;padding:40px 44px;border-radius:8px;font-family:'Cairo',sans-serif;line-height:2;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.pdoc h1{font-size:1.35rem;color:#1e3a5f;border-bottom:2px solid #b45309;padding-bottom:7px;margin-bottom:14px}
+.pdoc h2{font-size:1rem;color:#1e3a5f;margin:18px 0 8px}
+.ptrow{display:flex;gap:10px;padding:5px 0;border-bottom:1px dotted #ddd;font-size:.86rem}
+.pt-en{font-family:'IBM Plex Mono',monospace;color:#2563eb;min-width:160px;font-size:.78rem}
+
+/* history pane */
+.hpane{animation:fu .4s ease}
+.hfi{background:var(--s1);border:1px solid var(--b1);border-radius:9px;overflow:hidden;margin-bottom:10px}
+.hfi-hd{padding:11px 14px;display:flex;justify-content:space-between;align-items:center;background:var(--s2);border-bottom:1px solid var(--b1);cursor:pointer}
+.hfi-title{font-size:.86rem;font-weight:700}
+.hfi-meta{font-size:.68rem;color:var(--t3);margin-top:2px}
+.hfi-body{padding:12px 14px;font-size:.84rem;color:var(--t2);line-height:1.7;white-space:pre-wrap;max-height:180px;overflow:hidden}
+.hfi-body.exp{max-height:none}
+.exbtn{background:none;border:none;color:var(--blue);font-size:.76rem;padding:4px 14px;font-weight:700}
+.delbtn{padding:3px 9px;border-radius:6px;border:1px solid var(--b2);background:none;color:var(--red);font-size:.72rem}
+.delbtn:hover{background:rgba(248,81,73,.1)}
+
+/* misc */
+.bsm{padding:3px 10px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--t2);font-size:.7rem;font-weight:700}
+.bsm:hover{border-color:var(--blue);color:var(--blue)}
+.empty{text-align:center;padding:36px;color:var(--t3);font-size:.87rem;font-style:italic}
+.errbox{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);border-radius:9px;padding:13px;color:var(--red);font-size:.86rem}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.copied-toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--green);color:#fff;padding:8px 20px;border-radius:20px;
+  font-size:.82rem;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none;z-index:999;
+}
+.copied-toast.show{opacity:1}
+
+@media(max-width:800px){.cgrid{grid-template-columns:1fr}.wsteps{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.sidebar{display:none}.wsteps{grid-template-columns:1fr}}
+@media print{
+  .topbar,.sidebar,.tabs,.steps-bar,.pbtn,.bsm{display:none!important}
+  .app{height:auto}.main{overflow:visible}.pane{overflow:visible}
+  .panel{display:none!important}
+  #panel-print{display:block!important}
+  .pdoc{box-shadow:none;padding:0}
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="copied-toast" id="toast">✅ تم النسخ</div>
+
+<!-- topbar -->
+<div class="topbar">
+  <button class="topbtn" onclick="toggleSb()" style="font-size:1rem;padding:5px 10px">☰</button>
+  <div class="logo">
+    <span class="logo-icon">⚗️</span>
+    <div>
+      <span class="logo-text">مترجم المحاضرات العلمية</span>
+      <span class="logo-ver">SCIENTIFIC LECTURE TRANSLATOR v3</span>
+    </div>
+  </div>
+  <div class="gap"></div>
+  <div class="lang-sw">
+    <button class="on" onclick="setLang('en-ar',this)">EN → AR</button>
+    <button onclick="setLang('ar-en',this)">AR → EN</button>
+  </div>
+  <button class="topbtn" onclick="toggleTheme()" id="thbtn">🌙</button>
+</div>
+
+<div class="app">
+
+  <!-- sidebar -->
+  <aside class="sidebar" id="sb">
+    <div class="sbscroll">
+
+      <div class="sbsec">
+        <div class="sblabel">📄 الملف</div>
+        <div class="dz" id="dz" onclick="document.getElementById('finput').click()" ondragover="onDrag(event,1)" ondragleave="onDrag(event,0)" ondrop="onDrop(event)">
+          <div class="dz-ico">📑</div>
+          <p><strong>اضغط لرفع PDF</strong><br>أو اسحب الملف هنا</p>
+        </div>
+        <input type="file" id="finput" accept="application/pdf" onchange="loadPDF(this.files[0])">
+        <div class="fcard" id="fcard" style="display:none">
+          <span class="fcard-ico">📄</span>
+          <div>
+            <div class="fcard-name" id="fname"></div>
+            <div class="fcard-meta" id="fmeta"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sbsec" id="pgsec" style="display:none">
+        <div class="sblabel">📑 نطاق الصفحات</div>
+        <div class="pgrow">
+          <label>من</label>
+          <input type="number" id="pgfrom" value="1" min="1">
+          <label>إلى</label>
+          <input type="number" id="pgto" value="1" min="1">
+          <span class="pg-total" id="pgtotal"></span>
+        </div>
+      </div>
+
+      <div class="sbsec">
+        <div class="sblabel">🔬 التخصص</div>
+        <div class="chips">
+          <button class="chip on"  onclick="setF(this,'general')">عام</button>
+          <button class="chip" onclick="setF(this,'medicine')">طب</button>
+          <button class="chip" onclick="setF(this,'chemistry')">كيمياء</button>
+          <button class="chip" onclick="setF(this,'physics')">فيزياء</button>
+          <button class="chip" onclick="setF(this,'biology')">أحياء</button>
+          <button class="chip" onclick="setF(this,'engineering')">هندسة</button>
+          <button class="chip" onclick="setF(this,'math')">رياضيات</button>
+          <button class="chip" onclick="setF(this,'cs')">حاسوب</button>
+        </div>
+      </div>
+
+      <div class="sbsec">
+        <div class="sblabel">⚙️ خيارات</div>
+        <div class="togrow"><span>شرح المصطلحات</span>
+          <label class="tog"><input type="checkbox" id="oterms" checked><span class="togsl"></span></label></div>
+        <div class="togrow"><span>تلخيص المحاضرة</span>
+          <label class="tog"><input type="checkbox" id="osum" checked><span class="togsl"></span></label></div>
+        <div class="togrow"><span>جهّز للطباعة</span>
+          <label class="tog"><input type="checkbox" id="oprint" checked><span class="togsl"></span></label></div>
+      </div>
+
+      <div class="sbsec">
+        <div class="sblabel">🕐 ترجمات سابقة</div>
+        <div class="hmini" id="hmini"><div class="hempty">لا توجد ترجمات بعد</div></div>
+      </div>
+
+    </div>
+    <div class="sbbot">
+      <button class="gobtn" id="gobtn" onclick="doTranslate()" disabled>
+        <span id="goinner">🔬 ابدأ الترجمة</span>
+      </button>
+      <div class="sbstat" id="sbstat"></div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <div class="main">
+    <div class="pbar"><div class="pfill" id="pfill"></div></div>
+
+    <!-- steps bar (hidden until processing) -->
+    <div class="steps-bar" id="stepsbar" style="display:none">
+      <div class="step-item">
+        <div class="step-dot" id="st0"><span class="sdico">📄</span> قراءة النص</div>
+      </div>
+      <div class="step-line" id="sl0"></div>
+      <div class="step-item">
+        <div class="step-dot" id="st1"><span class="sdico">🔬</span> الترجمة</div>
+      </div>
+      <div class="step-line" id="sl1"></div>
+      <div class="step-item">
+        <div class="step-dot" id="st2"><span class="sdico">📚</span> المصطلحات</div>
+      </div>
+      <div class="step-line" id="sl2"></div>
+      <div class="step-item">
+        <div class="step-dot" id="st3"><span class="sdico">📝</span> الملخص</div>
+      </div>
+      <div class="step-line" id="sl3"></div>
+      <div class="step-item">
+        <div class="step-dot" id="st4"><span class="sdico">✅</span> اكتمل</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab on" onclick="showP('welcome',this)">🏠 البداية</button>
+      <button class="tab" id="ttranslate" onclick="showP('translate',this)" style="display:none">📖 الترجمة</button>
+      <button class="tab" id="tterms"     onclick="showP('terms',this)"    style="display:none">📚 المصطلحات <span class="tbadge" id="tcnt">0</span></button>
+      <button class="tab" id="tsummary"   onclick="showP('summary',this)"  style="display:none">📝 الملخص</button>
+      <button class="tab" id="tprint"     onclick="showP('print',this)"    style="display:none">🖨️ طباعة</button>
+      <button class="tab" id="thistory"   onclick="showP('history',this)"  style="display:none">🕐 السجل</button>
+    </div>
+
+    <div class="pane">
+
+      <div class="panel" id="panel-welcome">
+        <div class="welcome">
+          <div class="wico">⚗️</div>
+          <h2>مترجم المحاضرات العلمية</h2>
+          <p>ارفع محاضرتك PDF، اختر التخصص والصفحات، واحصل على ترجمة علمية دقيقة تظهر فوراً مع مصطلحات مشروحة وملخص وتصدير للطباعة.</p>
+          <div class="wsteps">
+            <div class="wstep"><div class="wstep-n">١</div><p>ارفع PDF واختر الصفحات</p></div>
+            <div class="wstep"><div class="wstep-n">٢</div><p>اختر التخصص والاتجاه</p></div>
+            <div class="wstep"><div class="wstep-n">٣</div><p>شاهد الترجمة تظهر فوراً</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-translate" style="display:none">
+        <div class="cgrid" id="cgrid"></div>
+      </div>
+
+      <div class="panel" id="panel-terms" style="display:none">
+        <div class="tgrid" id="tgrid"></div>
+      </div>
+
+      <div class="panel" id="panel-summary" style="display:none">
+        <div class="swrap" id="swrap"></div>
+      </div>
+
+      <div class="panel" id="panel-print" style="display:none">
+        <div class="pwrap">
+          <button class="pbtn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+          <div class="pdoc" id="pdoc"></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-history" style="display:none">
+        <div class="hpane" id="hpane"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── state ──
+let lang='en-ar', field='general', pdfPages=[], totalPages=0;
+let hist=JSON.parse(localStorage.getItem('slt_hist')||'[]');
+let cur=null;
+
+const FIELDS={
+  general:'علوم عامة',medicine:'الطب والعلوم الصحية',
+  chemistry:'الكيمياء',physics:'الفيزياء',
+  biology:'الأحياء',engineering:'الهندسة',
+  math:'الرياضيات',cs:'علوم الحاسوب'
+};
+
+// ── theme / sidebar ──
+function toggleTheme(){
+  const d=document.body.dataset.theme==='dark';
+  document.body.dataset.theme=d?'light':'dark';
+  document.getElementById('thbtn').textContent=d?'🌙':'☀️';
+}
+function toggleSb(){document.getElementById('sb').classList.toggle('off')}
+
+// ── lang / field ──
+function setLang(d,btn){
+  lang=d;
+  document.querySelectorAll('.lang-sw button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function setF(btn,f){
+  field=f;
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+// ── drag/drop ──
+function onDrag(e,on){e.preventDefault();document.getElementById('dz').classList.toggle('drag',!!on)}
+function onDrop(e){e.preventDefault();onDrag(e,0);const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')loadPDF(f)}
+
+// ── PDF load ──
+async function loadPDF(file){
+  if(!file)return;
+  setStat('⏳ جاري قراءة الملف...');
+  try{
+    const ab=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+    totalPages=pdf.numPages;
+    pdfPages=[];
+    for(let i=1;i<=pdf.numPages;i++){
+      const pg=await pdf.getPage(i);
+      const ct=await pg.getTextContent();
+      pdfPages.push(ct.items.map(s=>s.str).join(' '));
+    }
+    document.getElementById('fcard').style.display='flex';
+    document.getElementById('fname').textContent=file.name;
+    document.getElementById('fmeta').textContent=`${totalPages} صفحة`;
+    document.getElementById('pgsec').style.display='';
+    document.getElementById('pgfrom').value=1;document.getElementById('pgfrom').max=totalPages;
+    document.getElementById('pgto').value=totalPages;document.getElementById('pgto').max=totalPages;
+    document.getElementById('pgtotal').textContent=`/ ${totalPages}`;
+    document.getElementById('gobtn').disabled=false;
+    setStat('✅ الملف جاهز للترجمة');
+  }catch{setStat('❌ فشل قراءة الملف')}
+}
+
+// ── progress / steps ──
+function setP(pct,anim=0){
+  const el=document.getElementById('pfill');
+  anim?(el.classList.add('slide'),el.style.width=''):(el.classList.remove('slide'),el.style.width=pct+'%');
+}
+function setStat(m){document.getElementById('sbstat').textContent=m}
+
+function setStep(n){
+  // n: 0=reading,1=translating,2=terms,3=summary,4=done
+  for(let i=0;i<=4;i++){
+    const d=document.getElementById('st'+i);
+    d.classList.remove('active','done');
+    if(i<n)d.classList.add('done');
+    else if(i===n)d.classList.add('active');
+    if(i<4){
+      const l=document.getElementById('sl'+i);
+      l.classList.toggle('done',i<n);
+    }
+  }
+}
+
+// ── api ──
+async function callClaude(user,sys){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system:sys,
+      messages:[{role:'user',content:user}]
+    })
+  });
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content[0].text;
+}
+
+// Streaming call — writes text into a DOM element in real time
+async function callClaudeStream(user,sys,targetEl){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      stream:true,
+      system:sys,
+      messages:[{role:'user',content:user}]
+    })
+  });
+  if(!r.ok){const d=await r.json();throw new Error(d.error?.message||'API error')}
+  const reader=r.body.getReader();
+  const dec=new TextDecoder();
+  let full='';
+  targetEl.classList.add('streaming');
+  while(true){
+    const{done,value}=await reader.read();
+    if(done)break;
+    const chunk=dec.decode(value);
+    const lines=chunk.split('\n').filter(l=>l.startsWith('data: '));
+    for(const line of lines){
+      const raw=line.slice(6).trim();
+      if(raw==='[DONE]')break;
+      try{
+        const ev=JSON.parse(raw);
+        if(ev.type==='content_block_delta'&&ev.delta?.text){
+          full+=ev.delta.text;
+          targetEl.textContent=full;
+        }
+      }catch{}
+    }
+  }
+  targetEl.classList.remove('streaming');
+  return full;
+}
+
+// ── main translate ──
+async function doTranslate(){
+  if(!pdfPages.length)return;
+
+  const pgF=Math.max(1,+document.getElementById('pgfrom').value||1);
+  const pgT=Math.min(totalPages,+document.getElementById('pgto').value||totalPages);
+  let text=pdfPages.slice(pgF-1,pgT).join('\n\n').trim();
+  if(text.length>7500)text=text.slice(0,7500)+'\n\n[النص مختصر]';
+
+  const doTerms=document.getElementById('oterms').checked;
+  const doSum=document.getElementById('osum').checked;
+  const doP=document.getElementById('oprint').checked;
+  const isEnAr=lang==='en-ar';
+  const fl=FIELDS[field];
+
+  // UI: loading state
+  document.getElementById('gobtn').disabled=true;
+  document.getElementById('goinner').innerHTML='<span class="spin"></span> جاري المعالجة...';
+  document.getElementById('stepsbar').style.display='';
+  setP(0,1);setStep(0);setStat('⏳ جاري الترجمة...');
+
+  // Show translation tab immediately with skeleton
+  document.getElementById('ttranslate').style.display='';
+  document.getElementById('cgrid').innerHTML=`
+    <div class="rcard">
+      <div class="rc-head orig">
+        <span class="rc-title">${isEnAr?'ORIGINAL · ENGLISH':'النص الأصلي · عربي'}</span>
+        <button class="bsm" onclick="copyEl('origbody')">📋 نسخ</button>
+      </div>
+      <div class="rc-body" id="origbody" dir="${isEnAr?'ltr':'rtl'}"
+           style="${isEnAr?"font-family:'IBM Plex Mono',monospace;font-size:.82rem":''}"
+      >${esc(text.slice(0,3500)+(text.length>3500?'\n...':''))}</div>
+    </div>
+    <div class="rcard">
+      <div class="rc-head trans">
+        <span class="rc-title">${isEnAr?'الترجمة العلمية · عربي':'SCIENTIFIC TRANSLATION · ENGLISH'}</span>
+        <button class="bsm" onclick="copyEl('transbody')">📋 نسخ</button>
+      </div>
+      <div class="rc-body" id="transbody" dir="${isEnAr?'rtl':'ltr'}"></div>
+    </div>`;
+  showP('translate',document.getElementById('ttranslate'));
+
+  try{
+    // ── Step 1: STREAMING translation ──
+    setStep(1);setStat('🔬 جاري الترجمة...');setP(15);
+
+    const sysTr=isEnAr
+      ?`أنت مترجم أكاديمي علمي خبير متخصص في ${fl}. مهمتك ترجمة نصوص المحاضرات الأكاديمية ترجمة علمية دقيقة من الإنجليزية إلى العربية الفصحى.
+
+قواعد الجودة:
+١. استخدم المصطلحات العلمية العربية المعتمدة دولياً
+٢. عند أول ظهور لمصطلح علمي اكتبه عربياً ثم الأصل بين قوسين: مثال «الطيف الكهرومغناطيسي (electromagnetic spectrum)»
+٣. حافظ على الأسلوب الأكاديمي الرسمي والدقة العلمية
+٤. لا تحذف أي معلومة علمية أو رقم أو معادلة
+٥. الأرقام والرموز والمعادلات تبقى كما هي
+٦. ترجم الجمل بالكامل ولا تترجم كلمة بكلمة`
+      :`You are an expert academic scientific translator specialized in ${fl}.
+
+Quality rules:
+1. Use internationally recognized scientific terminology
+2. On first use, write the English term then Arabic in parentheses: e.g. "mitochondria (الميتوكوندريا)"
+3. Maintain formal academic register and scientific precision
+4. Never omit any scientific information, numbers, or equations
+5. Keep numbers, symbols, and equations as-is
+6. Translate complete sentences naturally, not word-by-word`;
+
+    const transEl=document.getElementById('transbody');
+    let translation;
+    try{
+      translation=await callClaudeStream(
+        isEnAr?`ترجم النص التالي ترجمة علمية دقيقة:\n\n${text}`:`Translate the following text with scientific precision:\n\n${text}`,
+        sysTr,transEl
+      );
+    }catch{
+      // fallback to non-streaming if streaming fails
+      translation=await callClaude(
+        isEnAr?`ترجم:\n\n${text}`:`Translate:\n\n${text}`,sysTr);
+      transEl.textContent=translation;
+    }
+
+    setP(45);
+
+    // ── Steps 2+3 in PARALLEL ──
+    let terms=[],summary='';
+    const jobs=[];
+
+    if(doTerms){
+      setStep(2);setStat('📚 استخراج المصطلحات...');
+      const sysTrm=`أنت خبير مصطلحات علمية في ${fl}.
+
+استخرج من النص 8-12 مصطلح علمي مهم. لكل مصطلح قدّم:
+- الاسم الأجنبي الدقيق
+- الترجمة العربية المعتمدة
+- شرح علمي واضح في 2-3 جمل يناسب طالب أكاديمي
+
+أجب بـ JSON فقط بدون أي نص إضافي أو backticks:
+[{"en":"exact english term","ar":"الترجمة العربية","def":"الشرح العلمي هنا"}]`;
+      jobs.push(callClaude(`النص:\n${text}`,sysTrm).then(r=>{
+        try{terms=JSON.parse(r.replace(/```json|```/g,'').trim())}catch{terms=[]}
+      }));
+    }
+
+    if(doSum){
+      setStep(3);setStat('📝 إعداد الملخص...');
+      const sysSum=isEnAr
+        ?`أنت أستاذ أكاديمي متخصص في ${fl}. لخّص محتوى المحاضرة في 5 نقاط رئيسية دقيقة بالعربية الفصحى. كل نقطة تبدأ بـ • وتكون جملة كاملة تحمل معنى علمياً واضحاً.`
+        :`You are an academic professor specialized in ${fl}. Summarize the lecture in 5 precise key points in English. Each starts with • and is a complete sentence with clear scientific meaning.`;
+      jobs.push(callClaude(
+        isEnAr?`لخّص المحاضرة التالية:\n${text}`:`Summarize the following lecture:\n${text}`,
+        sysSum
+      ).then(r=>{summary=r}));
+    }
+
+    await Promise.all(jobs);
+    setP(90);setStep(4);setStat('✅ اكتملت بنجاح!');
+
+    // save
+    cur={translation,terms,summary,text,isEnAr,field,fl,pgF,pgT,ts:Date.now()};
+    const fn=document.getElementById('fname').textContent;
+    hist.unshift({id:Date.now(),title:`${fn} (ص${pgF}–${pgT})`,field:fl,lang,translation,terms,summary,ts:Date.now()});
+    if(hist.length>12)hist=hist.slice(0,12);
+    localStorage.setItem('slt_hist',JSON.stringify(hist));
+
+    // render secondary panels
+    renderSecondary(doTerms,doSum,doP);
+    setP(100);setTimeout(()=>{setP(0);document.getElementById('stepsbar').style.display='none'},1200);
+
+  }catch(err){
+    document.getElementById('cgrid').innerHTML=`<div class="errbox">⚠️ خطأ: ${esc(err.message)}</div>`;
+    setP(0);setStat('❌ فشل الاتصال');
+    document.getElementById('stepsbar').style.display='none';
+  }
+
+  document.getElementById('gobtn').disabled=false;
+  document.getElementById('goinner').textContent='🔬 ترجمة مجدداً';
+}
+
+function renderSecondary(doTerms,doSum,doP){
+  const{translation,terms,summary,text,isEnAr,fl,pgF,pgT}=cur;
+
+  // terms
+  if(doTerms){
+    document.getElementById('tterms').style.display='';
+    document.getElementById('tcnt').textContent=terms.length;
+    document.getElementById('tgrid').innerHTML=terms.length
+      ?terms.map(t=>`
+        <div class="tcard">
+          <div class="tc-head">
+            <span class="tc-en">${esc(t.en||'')}</span>
+            <span class="tc-ar">${esc(t.ar||'')}</span>
+          </div>
+          <div class="tc-body">${esc(t.def||'')}</div>
+        </div>`).join('')
+      :'<div class="empty">لم يتم استخراج مصطلحات</div>';
+  }
+
+  // summary
+  if(doSum){
+    document.getElementById('tsummary').style.display='';
+    const pts=summary.split('\n').filter(l=>/^[•\-*]/.test(l.trim()));
+    document.getElementById('swrap').innerHTML=`
+      <div class="sum-hd">📝 LECTURE SUMMARY · ملخص المحاضرة</div>
+      <div class="sum-bd">
+        ${pts.length
+          ?pts.map((p,i)=>`<div class="spoint"><span class="sp-n">${i+1}</span><span>${esc(p.replace(/^[•\-*]\s*/,''))}</span></div>`).join('')
+          :`<p>${esc(summary)}</p>`}
+      </div>`;
+  }
+
+  // print
+  if(doP){
+    document.getElementById('tprint').style.display='';
+    const rows=terms.map(t=>`<div class="ptrow"><span class="pt-en">${esc(t.en)}</span><strong>${esc(t.ar)}</strong><span style="color:#555;font-size:.82rem"> — ${esc(t.def)}</span></div>`).join('');
+    document.getElementById('pdoc').innerHTML=`
+      <h1>📄 ترجمة المحاضرة العلمية</h1>
+      <p style="color:#777;font-size:.8rem;margin-bottom:16px">التخصص: ${esc(fl)} · ${isEnAr?'إنجليزي → عربي':'عربي → إنجليزي'} · الصفحات ${pgF}–${pgT}</p>
+      <h2>الترجمة</h2><p>${esc(translation).replace(/\n/g,'<br>')}</p>
+      ${terms.length?`<h2>المصطلحات العلمية</h2>${rows}`:''}
+      ${summary?`<h2>الملخص</h2><p>${esc(summary).replace(/\n/g,'<br>')}</p>`:''}`;
+  }
+
+  // history tab
+  document.getElementById('thistory').style.display='';
+  renderHist();
+}
+
+// ── history ──
+function renderHist(){
+  const mini=document.getElementById('hmini');
+  mini.innerHTML=hist.length===0
+    ?'<div class="hempty">لا توجد ترجمات بعد</div>'
+    :hist.slice(0,5).map(h=>`
+      <div class="hitem" onclick="loadHist(${h.id})">
+        <div class="hitem-title">${esc(h.title)}</div>
+        <div class="hitem-meta">
+          <span class="hbadge ${h.lang}">${h.lang==='en-ar'?'EN→AR':'AR→EN'}</span>
+          <span>${new Date(h.ts).toLocaleDateString('ar-EG')}</span>
+        </div>
+      </div>`).join('');
+
+  const pane=document.getElementById('hpane');
+  pane.innerHTML=hist.length===0
+    ?'<div class="empty">📭 لا توجد ترجمات محفوظة</div>'
+    :hist.map(h=>`
+      <div class="hfi">
+        <div class="hfi-hd">
+          <div>
+            <div class="hfi-title">${esc(h.title)}</div>
+            <div class="hfi-meta">${esc(h.field)} · ${h.lang==='en-ar'?'EN→AR':'AR→EN'} · ${new Date(h.ts).toLocaleString('ar-EG')}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="bsm" onclick="loadHist(${h.id})">↩ تحميل</button>
+            <button class="delbtn" onclick="delHist(${h.id})">🗑</button>
+          </div>
+        </div>
+        <div class="hfi-body" id="hfb${h.id}">${esc(h.translation.slice(0,280)+(h.translation.length>280?'...':''))}</div>
+        <button class="exbtn" onclick="toggleExp(${h.id})">▼ عرض الكامل</button>
+      </div>`).join('');
+}
+
+function toggleExp(id){
+  const el=document.getElementById('hfb'+id);
+  const h=hist.find(x=>x.id===id);
+  const btn=el.nextElementSibling;
+  const exp=el.classList.toggle('exp');
+  el.textContent=exp?h.translation:h.translation.slice(0,280)+(h.translation.length>280?'...':'');
+  btn.textContent=exp?'▲ إخفاء':'▼ عرض الكامل';
+}
+function loadHist(id){
+  const h=hist.find(x=>x.id===id);if(!h)return;
+  cur={...h,text:'[من السجل]',isEnAr:h.lang==='en-ar',pgF:'?',pgT:'?',fl:h.field};
+  document.getElementById('ttranslate').style.display='';
+  document.getElementById('cgrid').innerHTML=`
+    <div class="rcard"><div class="rc-head orig"><span class="rc-title">من السجل</span></div>
+      <div class="rc-body" style="color:var(--t3);font-style:italic">النص الأصلي غير محفوظ</div></div>
+    <div class="rcard"><div class="rc-head trans"><span class="rc-title">الترجمة المحفوظة</span>
+      <button class="bsm" onclick="copyEl('hloaded')">📋 نسخ</button></div>
+      <div class="rc-body" id="hloaded" dir="${h.lang==='en-ar'?'rtl':'ltr'}">${esc(h.translation)}</div></div>`;
+  showP('translate',document.getElementById('ttranslate'));
+  renderSecondary(h.terms?.length>0,!!h.summary,true);
+}
+function delHist(id){
+  hist=hist.filter(h=>h.id!==id);
+  localStorage.setItem('slt_hist',JSON.stringify(hist));
+  renderHist();
+}
+
+// ── pane switch ──
+function showP(id,btn){
+  document.querySelectorAll('.panel').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('on'));
+  document.getElementById('panel-'+id).style.display='';
+  if(btn)btn.classList.add('on');
+}
+
+// ── utils ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function copyEl(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent.trim());
+  const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// init
+renderHist();
+</script>
+</body>
+</html>
